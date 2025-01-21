@@ -60,6 +60,7 @@ Configure the build with the required flags:
 ```bash
 ./configure --enable-virtfs --enable-kvm --enable-libusb --enable-libudev --enable-spice --enable-usb-redir --enable-jack
 ```
+
 Build and install:
 ```bash
 sudo make install -j$(nproc)
@@ -74,8 +75,8 @@ Download the Windows 10 ISO:
 
 [Windows 10 ISO Download](https://www.microsoft.com/en-us/software-download/windows10iso)
 
-### Use `virt-manager` to Create the VM
-1. Open `virt-manager`.
+### Use virt-manager to Create the VM
+1. Open virt-manager.
 2. Click the first icon to create a new VM.
 3. Select the downloaded Windows ISO as the installation media.
 4. Allocate resources (e.g., 8 GB RAM, 4 CPU cores).
@@ -162,52 +163,56 @@ Use the following XML template for required changes. Replace `REPLACE YOUR UUID 
 
 ---
 
-**Now that the VM is undetectable you can run and use the lockdown browser and exit it to use chrome and another application in the host system, simply pass your real webcam to the VM and your off to the races**
+## Method 1 for Camera Spoof
 
-**Follow these next steps to also spoof your camera**
+### Rationale
+This method leverages OBS (Open Broadcast Software) and a custom MJPEG server to spoof a webcam feed. OBS allows live or prerecorded clips to be used as the webcam feed, which can then be passed to the VM.
 
-# Method 1 for Camera Spoof
+---
 
-### Rationale 
-For this to work a few idea will be leveraged, first a control software will be used, for us, it will be OBS or Open Broadcast Software, this will be where you can set and manager you web cam inclduing having it live or a prereocrded clip, or multiple pre recorded clips
-Next we will create our own python MJPEG server to give the Windows VM and way to receive the video
-Finally we will compile our own windows driver to recive this footage and pass it to the lockdown browser 
-
-### Install OBS Studio and Video Loop back 
-```SH
+### Step 1: Install OBS Studio and Video Loopback
+Install the required software:
+```bash
 sudo apt install v4l2loopback-dkms
 sudo apt install obs-studio
 ```
 
-### Setup OBS Studio
-1. Launch OBS by `obs`
-2. Select "I will only be using the virtual machine"
-3. Create a scene for the live camera feed
-   1. Add a source of video capture device
-   2. Create new
-   3. Select your live camera
-4. Add a Scene for all pre-recorded clips
-   1. Under source add a media source
-   2. select you recorded clip file location
-5. Start OBS virtual camera
+---
 
-### Setup MJPEG Server
-First identify which video stream is OBS on, do this by lauching VLC, Media -> Open Capture Device
-Under video device name test each one `/dev/video[number]`
+### Step 2: Setup OBS Studio
+1. Launch OBS using `obs`.
+2. Select "I will only be using the virtual camera."
+3. Create a scene for the live camera feed:
+   - Add a source of "Video Capture Device."
+   - Create new and select your live camera.
+4. Create a scene for prerecorded clips:
+   - Add a media source and select the prerecorded clip file location.
+5. Start the OBS virtual camera.
 
-#### Run python server
-```SH
-cd ../mjpeg-server
-```
-open the main.py file and change the line with the "cap = VideoCapture(CHANGE THIS NUMBER TO YOUR /dev/video[NUMBER]"
-change the last line "0.0.0.0" IP to the IP bound to your VM you can figure this out with `ifconfig`
+---
 
-#### Run the server
-```SH
+### Step 3: Setup MJPEG Server
+Identify the OBS video stream by launching VLC:
+- Go to Media -> Open Capture Device.
+- Test each device under `/dev/video[number]`.
+
+#### Modify the Python Server
+Navigate to the MJPEG server directory and edit `main.py`:
+1. Update the `cap = VideoCapture(...)` line with the correct `/dev/video[number]`.
+2. Update the IP address bound to the VM in the last line with a shared subnet IP.
+
+#### Run the Server
+```bash
 python main.py
 ```
 
-On the windows VM install the IP Adapter file found in VM-Programs and enter the IP and Port of the python server, make sure the IP chosen shares a subnet with the VM
+---
 
-The "Camera" on your VM will now be what is shared by the OBS virtual cam
+### Final Step: Configure Windows VM
+Install the IP Adapter file on the Windows VM (found in the `VM-Programs` directory). Enter the IP and port of the Python server. Ensure the chosen IP shares a subnet with the VM.
+
+The VM "Camera" will now be the OBS virtual cam feed.
+
+---
+
 **Note:** This guide is for educational purposes only. Ensure compliance with your institution's policies.
