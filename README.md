@@ -2,7 +2,7 @@
 
 # Method 1 Full Bypass
 
-All files can be found in this repo, to follow along simply git clone and use the command found in the guild, when I wrote this I was using Ubuntu although the command can be translated to windows and more easily macOS
+All files can be found in this repo, to follow along simply git clone and use the command found in this guide, when I wrote this I was using Ubuntu although the command can be translated to windows and more easily macOS
 
 ## Setup QEMU
 
@@ -63,22 +63,28 @@ run `virt-manager`
 4. Create a disk image, 25GB is plenty
 5. Name the VM on the last step and select the 'customize configuration' check box
 6. Switch to the XML View next to under view
-7. Use the XML file below as a template for the required changed
+7. Use the XML file below as a template for the required changes, an entire example file can also be found in the git under EXAMPLE.XML
+8. Under display, if built with the feature, use spice over VNC you will get better display performance  
 ```XML
-<domain type="kvm">
-    <name>**YOUR VM NAME**</name>
-    <uuid>YOUR UUID</uuid>
+<domain xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0" type="kvm">
+    <name>Entertainment</name>
+    <uuid>REPLACE YOUR UUID HERE!</uuid>
     <metadata>
         <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
             <libosinfo:os id="http://microsoft.com/win/10"/>
         </libosinfo:libosinfo>
     </metadata>
-    <memory unit="KiB">8392704</memory>
-    <currentMemory unit="KiB">8392704</currentMemory>
-    <vcpu placement="static">4</vcpu>
-    <os>
-        <type arch="x86_64" machine="pc-q35-8.2">hvm</type>
-        <boot dev="hd"/>
+    <memory unit="KiB">1548288</memory>
+    <currentMemory unit="KiB">1548288</currentMemory>
+    <memoryBacking>
+        <source type="memfd"/>
+        <access mode="shared"/>
+    </memoryBacking>
+    <vcpu placement="static">12</vcpu>
+    <os firmware="efi">
+        <type arch="x86_64" machine="pc-q35-7.0">hvm</type>
+        <loader/>
+        <smbios mode="host"/>
     </os>
     <features>
         <acpi/>
@@ -96,7 +102,9 @@ run `virt-manager`
         <smm state="on"/>
         <ioapic driver="kvm"/>
     </features>
-    <cpu mode="host-model" check="partial"/>
+    <cpu mode="host-passthrough" check="none" migratable="on">
+        <feature policy="disable" name="hypervisor"/>
+    </cpu>
     <clock offset="localtime">
         <timer name="rtc" tickpolicy="catchup"/>
         <timer name="pit" tickpolicy="delay"/>
@@ -110,142 +118,23 @@ run `virt-manager`
         <suspend-to-mem enabled="no"/>
         <suspend-to-disk enabled="no"/>
     </pm>
-    <devices>
-        <emulator>/usr/local/bin/qemu-system-x86_64</emulator>
-        ****** REPLACE WITH YOUR DISK INFORMATION COPY AND PASTE FROM YOUR XML FILE ******
-        <disk type="file" device="disk">
-            <driver name="qemu" type="qcow2" discard="unmap"/>
-            <source file="/var/lib/libvirt/images/win10.qcow2"/>
-            <target dev="sda" bus="sata"/>
-            <address type="drive" controller="0" bus="0" target="0" unit="0"/>
-        </disk>
-        
-        <disk type="file" device="cdrom">
-            <driver name="qemu" type="raw"/>
-            <source file="/home/hbeydoun/Downloads/Win10_22H2_English_x64v1.iso"/>
-            <target dev="sdb" bus="sata"/>
-            <readonly/>
-            <address type="drive" controller="0" bus="0" target="0" unit="1"/>
-        </disk>
-        ***********************************************************************************
-        <controller type="usb" index="0" model="qemu-xhci" ports="15">
-            <address type="pci" domain="0x0000" bus="0x02" slot="0x00" function="0x0"/>
-        </controller>
-        <controller type="pci" index="0" model="pcie-root"/>
-        <controller type="pci" index="1" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="1" port="0x10"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x0" multifunction="on"/>
-        </controller>
-        <controller type="pci" index="2" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="2" port="0x11"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x1"/>
-        </controller>
-        <controller type="pci" index="3" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="3" port="0x12"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x2"/>
-        </controller>
-        <controller type="pci" index="4" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="4" port="0x13"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x3"/>
-        </controller>
-        <controller type="pci" index="5" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="5" port="0x14"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x4"/>
-        </controller>
-        <controller type="pci" index="6" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="6" port="0x15"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x5"/>
-        </controller>
-        <controller type="pci" index="7" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="7" port="0x16"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x6"/>
-        </controller>
-        <controller type="pci" index="8" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="8" port="0x17"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x02" function="0x7"/>
-        </controller>
-        <controller type="pci" index="9" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="9" port="0x18"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x0" multifunction="on"/>
-        </controller>
-        <controller type="pci" index="10" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="10" port="0x19"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x1"/>
-        </controller>
-        <controller type="pci" index="11" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="11" port="0x1a"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x2"/>
-        </controller>
-        <controller type="pci" index="12" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="12" port="0x1b"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x3"/>
-        </controller>
-        <controller type="pci" index="13" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="13" port="0x1c"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x4"/>
-        </controller>
-        <controller type="pci" index="14" model="pcie-root-port">
-            <model name="pcie-root-port"/>
-            <target chassis="14" port="0x1d"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x03" function="0x5"/>
-        </controller>
-        <controller type="sata" index="0">
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x1f" function="0x2"/>
-        </controller>
-        <interface type="network">
-            <mac address="52:54:00:2f:64:1d"/>
-            <source network="default"/>
-            <model type="e1000e"/>
-            <address type="pci" domain="0x0000" bus="0x01" slot="0x00" function="0x0"/>
-        </interface>
-        <serial type="pty">
-            <target type="isa-serial" port="0">
-                <model name="isa-serial"/>
-            </target>
-        </serial>
-        <console type="pty">
-            <target type="serial" port="0"/>
-        </console>
-        <input type="tablet" bus="usb">
-            <address type="usb" bus="0" port="1"/>
-        </input>
-        <input type="mouse" bus="ps2"/>
-        <input type="keyboard" bus="ps2"/>
-        <graphics type="spice" autoport="yes">
-            <listen type="address"/>
-            <gl enable="no"/>
-        </graphics>
-        <audio id="1" type="none"/>
-        <video>
-            <model type="vga" vram="16384" heads="1" primary="yes"/>
-            <address type="pci" domain="0x0000" bus="0x00" slot="0x01" function="0x0"/>
-        </video>
-        <hostdev mode="subsystem" type="usb" managed="yes">
-            <source>
-                <vendor id="0x04f2"/>
-                <product id="0xb6b6"/>
-            </source>
-            <address type="usb" bus="0" port="2"/>
-        </hostdev>
-        <watchdog model="itco" action="reset"/>
-        <memballoon model="virtio">
-            <address type="pci" domain="0x0000" bus="0x03" slot="0x00" function="0x0"/>
-        </memballoon>
-    </devices>
+    <qemu:commandline>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=0,version=UX305UA.201"/>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=1,manufacturer=ASUS,product=UX305UA,version=2021.1"/>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=2,manufacturer=Intel,version=2021.5,product=Intel i9-12900K"/>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=3,manufacturer=XBZJ"/>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=17,manufacturer=KINGSTON,loc_pfx=DDR5,speed=4800,serial=000000,part=0000"/>
+        <qemu:arg value="-smbios"/>
+        <qemu:arg value="type=4,manufacturer=Intel,max-speed=4800,current-speed=4800"/>
+        <qemu:arg value="-cpu"/>
+        <qemu:arg value="host,family=6,model=158,stepping=2,model_id=Intel(R) Core(TM) i9-12900K CPU @ 2.60GHz,vmware-cpuid-freq=false,enforce=false,host-phys-bits=true,hypervisor=off"/>
+        <qemu:arg value="-machine"/>
+        <qemu:arg value="q35,kernel_irqchip=on"/>
+    </qemu:commandline>
 </domain>
-
 ```
-
