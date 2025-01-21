@@ -216,3 +216,130 @@ The VM "Camera" will now be the OBS virtual cam feed.
 ---
 
 **Note:** This guide is for educational purposes only. Ensure compliance with your institution's policies.
+
+## Method 2: Using a Raspberry Pi Zero with OTG and Gadget Mode
+### Rationale
+
+The Raspberry Pi Zero supports OTG, allowing it to emulate USB devices such as a webcam. By combining this with a lightweight MJPEG stream from a remote OBS server, the Raspberry Pi can act as a virtual webcam. This setup is ideal for streaming pre-recorded or live video content from an OBS instance to a connected host system (e.g., Windows VM or Lockdown Browser environment).
+
+### Step 1: Set Up Your Raspberry Pi Zero for USB OTG
+#### Enable OTG Mode
+
+1. Flash the Raspberry Pi OS Lite to your microSD card using tools like Raspberry Pi Imager or balenaEtcher.
+2. After flashing, mount the boot partition of the microSD card on your computer.
+3. Edit the config.txt file and add the following line at the end to enable USB OTG:
+   `dtoverlay=dwc2`
+4. Edit the `cmdline.txt` file and add `modules-load=dwc2,g_ether` after `rootwait` (on the same line). It should look something like this:
+
+   `root=/dev/mmcblk0p2 rootfstype=ext4 fsck.repair=yes rootwait modules-load=dwc2,g_ether`
+
+5. Create an empty file named ssh (no extension) in the boot partition to enable `SSH`.
+
+6. Insert the microSD card into the Raspberry Pi Zero and connect it to your computer via the micro-USB port (labeled “USB”). It should boot up as a USB Ethernet device.
+
+#### Access the Raspberry Pi via SSH
+
+1. Find the IP address of your Raspberry Pi (using tools like arp -a or check your DHCP client list).
+2. SSH into the Raspberry Pi:
+   `ssh pi@<raspberry-pi-ip>`
+
+Default password is `raspberry`. Change the password after logging in using `passwd`.
+
+### Step 2: Set Up USB Gadget Webcam on the Raspberry Pi
+
+1. **Install Dependencies**: Update and install necessary packages:
+
+   ```SH
+   sudo apt update
+   sudo apt install -y libv4l2loopback-utils v4l2loopback-dkms gstreamer1.0-tools
+   ```
+
+2. **Enable USB Webcam Gadget**: Create a USB gadget configuration for the virtual webcam:
+
+   ```SH
+   sudo mkdir /opt/usb-webcam
+   cd /opt/usb-webcam
+   sudo nano webcam-gadget.sh
+   ```
+
+   Add the following script to configure the gadget:
+
+   ```bash
+   #!/bin/bash
+   modprobe libcomposite
+   cd /sys/kernel/config/usb_gadget/
+   mkdir -p webcam
+   cd webcam
+   
+   echo 0x1d6b > idVendor  # Linux Foundation
+   echo 0x0104 > idProduct # Multifunction Composite Gadget
+   echo 0x0100 > bcdDevice # v1.0.0
+   echo 0x0200 > bcdUSB    # USB2
+   
+   mkdir -p strings/0x409
+   echo "0123456789" > strings/0x409/serialnumber
+   echo "Raspberry Pi Zero" > strings/0x409/manufacturer
+   echo "USB Webcam" > strings/0x409/product
+   
+   mkdir -p configs/c.1/strings/0x409
+   echo "Config 1: Webcam" > configs/c.1/strings/0x409/configuration
+   echo 120 > configs/c.1/MaxPower
+   
+   mkdir -p functions/uvc.usb0
+   echo 3072 > functions/uvc.usb0/streaming_maxpacket
+   mkdir -p functions/uvc.usb0/control/header/h
+   ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/fs
+   ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/hs
+   
+   mkdir -p functions/uvc.usb0/streaming/mjpeg/m
+   echo 1 > functions/uvc.usb0/streaming/mjpeg/m/bmaControls
+   echo 640 > functions/uvc.usb0/streaming/mjpeg/m/wWidth
+   echo 480 > functions/uvc.usb0/streaming/mjpeg/m/wHeight
+   echo 333333 > functions/uvc.usb0/streaming/mjpeg/m/dwDefaultFrameInterval
+   echo 640000 > functions/uvc.usb0/streaming/mjpeg/m/dwMinBitRate
+   echo 1280000 > functions/uvc.usb0/streaming/mjpeg/m/dwMaxBitRate
+   echo 614400 > functions/uvc.usb0/streaming/mjpeg/m/dwMaxVideoFrameBufferSize
+   ln -s functions/uvc.usb0 configs/c.1/
+   
+   ls /sys/class/udc > UDC
+   ```
+3. Make the script executable:
+
+   `sudo chmod +x webcam-gadget.sh`
+4. Run the script:
+
+   `sudo ./webcam-gadget.sh`
+
+The Raspberry Pi will now register as a USB webcam.
+
+### Step 3: Stream Video from Remote OBS Server
+
+1. Set Up MJPEG Stream on OBS:
+
+   - In OBS Studio on the remote machine, go to Settings > Stream.
+   - Select Custom Streaming Server and configure:
+     - Server: http://<raspberry-pi-ip>:8080
+     - Stream Key: Any string (e.g., live).
+   - Install and run an MJPEG server plugin or use the built-in `obs-mjpeg-server` plugin if available.
+
+2. Stream the Video to Raspberry Pi: On the Raspberry Pi, use ffmpeg or gstreamer to pull the MJPEG stream and redirect it to the USB webcam gadget.
+
+Example using `ffmpeg`:
+
+`ffmpeg -i http://<obs-server-ip>:8080/stream -f v4l2 /dev/video0`
+
+Example using gstreamer:
+`gst-launch-1.0 souphttpsrc location=http://<obs-server-ip>:8080/stream ! jpegdec ! v4l2sink device=/dev/video0`
+
+### Step 4: Connect the Raspberry Pi to the Host System
+
+1. Plug the Raspberry Pi Zero into the host system's USB port.
+2. It should be recognized as a USB webcam.
+3. Open the video application (e.g., Lockdown Browser) on the host system, and select the virtual webcam as the input source.
+
+#### Notes
+
+ Ensure the OBS server, Raspberry Pi, and host system are on the same network or have a direct route to each other.
+ Use a stable power source for the Raspberry Pi to avoid interruptions.
+ Test the setup with a video conferencing app before using it in a critical environment.
+
