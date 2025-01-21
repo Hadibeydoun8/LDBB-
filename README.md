@@ -1,71 +1,92 @@
 # Lockdown Browser Bypass
 
-# Method 1 Full Bypass
+## Method 1: Full Bypass
 
-All files can be found in this repo, to follow along simply git clone and use the command found in this guide, when I wrote this I was using Ubuntu although the command can be translated to windows and more easily macOS
+### Overview
+This guide outlines the steps to create an undetectable virtual machine (VM) using QEMU, which can be recompiled to bypass Lockdown Browser detection. The process has been demonstrated on Ubuntu, but it can be adapted for Windows or macOS environments. All required files can be found in the associated repository.
+
+---
 
 ## Setup QEMU
 
-### Rational 
-The first step to bypass detection is to create an undetectable VM, QEMU lends itself well to this idea as it's open source and can be recompiled to suit our needs. Although the source code can be compiled to windows, macOS, and linux I have opted to use Ubuntu due to the environment it offers
+### Rationale
+Using QEMU allows for creating a VM that is undetectable by Lockdown Browser due to its open-source nature, which enables custom patches and configurations.
 
-### QEMU Patch
-Begin by retrieving the source code for qemu version 8.2.2 as thats what I patched with however any version is likley fine 
-### Dependencies
-#### Build Dependencies 
-```
+---
+
+### Step 1: Install QEMU Dependencies
+
+#### Build Dependencies
+```bash
 sudo apt install git build-essential ninja-build python3-venv libglib2.0-0 flex
 ```
-#### Install QEMU Dependencies 
-_Although the QEMU build will replace the binary's with our recompiled and rebuilt ones, it is still important to install QEMU from a package manager to get all of its dependence_
 
-```
+#### QEMU Dependencies
+Install QEMU from the package manager to ensure all dependencies are available, even though the binaries will be replaced with recompiled versions.
+```bash
 sudo apt install qemu-system qemu-kvm virt-manager bridge-utils
 ```
 
-#### Get QEMU source code 
+---
 
-```sh
+### Step 2: Get and Patch QEMU Source Code
+
+#### Download the QEMU Source Code
+Retrieve the source code for QEMU version 8.2.2:
+```bash
 wget https://download.qemu.org/qemu-8.2.2.tar.xz # Get source code
-tar xvJf qemu-8.2.2.tar.xz # Extract Code
+tar xvJf qemu-8.2.2.tar.xz # Extract code
 ```
 
-#### Patch Source 
-To copy and paste commands make sure to have git cloned this repo and placed the source code there 
-```SH
-cd qemu-8.2.2 # Enter Build Directory
+#### Apply the Patch
+Ensure the repository containing the patch is cloned and place the patch file in the source code directory:
+```bash
+cd qemu-8.2.2 # Enter build directory
 git apply ../qemu-patch/qemu-8.2.0.patch # Apply patch
 ```
 
-#### Install dependencies for build options 
-These dependencies are only required for the configuration options used in the next step, however the same goals can be accomplished with no build options they do however provide some 'quality of life' improvements
-```SH
+---
+
+### Step 3: Install Additional Build Dependencies
+Install the following dependencies for specific build options. These provide various quality-of-life improvements for the VM:
+```bash
 sudo apt install libglib2.0-dev libjack-dev libpixman-1-dev libspice-server-dev libudev-dev libusbredirparser-dev libusb libusb-1.0-0-dev
 ```
 
+---
 
-#### Build Patched Version
-```SH
-./configure --enable-virtfs --enable-kvm --enable-libusb --enable-libudev --enable-spice --enable-usb-redir --enable-jack # you can configure with any build flags you would like to use the former will work just fine for what we are doing 
-
-sudo make install -j$(nproc) 
+### Step 4: Build and Install the Patched Version
+Configure the build with the required flags:
+```bash
+./configure --enable-virtfs --enable-kvm --enable-libusb --enable-libudev --enable-spice --enable-usb-redir --enable-jack
+```
+Build and install:
+```bash
+sudo make install -j$(nproc)
 ```
 
-#### Create Windows VM
-Download the Windows 10 iso from the link 
+---
 
-https://www.microsoft.com/en-us/software-download/windows10iso
+## Create Windows VM
 
-run `virt-manager`
-1. Create a new vm using the first icon in vert-manager 
-2. Select your downloaded windows ISO for your installation media 
-3. Set memory and CPU's, 8GB and 4 Cores is a good starting point
-4. Create a disk image, 25GB is plenty
-5. Name the VM on the last step and select the 'customize configuration' check box
-6. Switch to the XML View next to under view
-7. Use the XML file below as a template for the required changes, an entire example file can also be found in the git under EXAMPLE.XML
-8. Under display, if built with the feature, use spice over VNC you will get better display performance  
-```XML
+### Download Windows ISO
+Download the Windows 10 ISO:
+
+[Windows 10 ISO Download](https://www.microsoft.com/en-us/software-download/windows10iso)
+
+### Use `virt-manager` to Create the VM
+1. Open `virt-manager`.
+2. Click the first icon to create a new VM.
+3. Select the downloaded Windows ISO as the installation media.
+4. Allocate resources (e.g., 8 GB RAM, 4 CPU cores).
+5. Create a 25 GB disk image.
+6. Name the VM and check the "Customize configuration" option.
+7. Switch to XML view under the "View" menu.
+
+### Apply XML Configuration
+Use the following XML template for required changes. Replace `REPLACE YOUR UUID HERE!` with a unique UUID for your setup:
+
+```xml
 <domain xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0" type="kvm">
     <name>Entertainment</name>
     <uuid>REPLACE YOUR UUID HERE!</uuid>
@@ -138,3 +159,55 @@ run `virt-manager`
     </qemu:commandline>
 </domain>
 ```
+
+---
+
+**Now that the VM is undetectable you can run and use the lockdown browser and exit it to use chrome and another application in the host system, simply pass your real webcam to the VM and your off to the races**
+
+**Follow these next steps to also spoof your camera**
+
+# Method 1 for Camera Spoof
+
+### Rationale 
+For this to work a few idea will be leveraged, first a control software will be used, for us, it will be OBS or Open Broadcast Software, this will be where you can set and manager you web cam inclduing having it live or a prereocrded clip, or multiple pre recorded clips
+Next we will create our own python MJPEG server to give the Windows VM and way to receive the video
+Finally we will compile our own windows driver to recive this footage and pass it to the lockdown browser 
+
+### Install OBS Studio and Video Loop back 
+```SH
+sudo apt install v4l2loopback-dkms
+sudo apt install obs-studio
+```
+
+### Setup OBS Studio
+1. Launch OBS by `obs`
+2. Select "I will only be using the virtual machine"
+3. Create a scene for the live camera feed
+   1. Add a source of video capture device
+   2. Create new
+   3. Select your live camera
+4. Add a Scene for all pre-recorded clips
+   1. Under source add a media source
+   2. select you recorded clip file location
+5. Start OBS virtual camera
+
+### Setup MJPEG Server
+First identify which video stream is OBS on, do this by lauching VLC, Media -> Open Capture Device
+Under video device name test each one `/dev/video[number]`
+
+#### Run python server
+```SH
+cd ../mjpeg-server
+```
+open the main.py file and change the line with the "cap = VideoCapture(CHANGE THIS NUMBER TO YOUR /dev/video[NUMBER]"
+change the last line "0.0.0.0" IP to the IP bound to your VM you can figure this out with `ifconfig`
+
+#### Run the server
+```SH
+python main.py
+```
+
+On the windows VM install the IP Adapter file found in VM-Programs and enter the IP and Port of the python server, make sure the IP chosen shares a subnet with the VM
+
+The "Camera" on your VM will now be what is shared by the OBS virtual cam
+**Note:** This guide is for educational purposes only. Ensure compliance with your institution's policies.
